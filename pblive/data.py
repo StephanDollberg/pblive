@@ -21,6 +21,8 @@ server_ip = None
 
 sessions = {}
 users = {}
+sids_to_user = {}
+sids_to_session = {}
 admins = {}
 
 
@@ -172,7 +174,7 @@ class SpeedReviewQuestion(Question):
 
 
 class User:
-    def __init__(self, sid=None, session=None, answers=None, colour=None, username=None):
+    def __init__(self, sid=None, session=None, answers=None, username=None):
         if answers is None:
             answers = {}
 

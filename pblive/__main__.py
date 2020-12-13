@@ -90,13 +90,12 @@ def debug():
 def socket_join(session_name):
     app.logger.info('New client {} connected'.format(flask.request.sid))
 
-    _session = data.sessions[session_name]
-    user = data.User(sid=flask.request.sid, session=_session)
-    data.users[flask.request.sid] = user
+    session = data.sessions[session_name]
+    data.sids_to_session[flask.request.sid] = session
 
     # Send initial colour picker
-    flask_socketio.emit('update', flask.render_template('colour_picker.html', session=_session), room=flask.request.sid)
-    flask_socketio.emit('update_left', render_sidebar(user, _session), room=flask.request.sid)
+    flask_socketio.emit('update', flask.render_template('colour_picker.html', session=session), room=flask.request.sid)
+    # flask_socketio.emit('update_left', render_sidebar(user, session), room=flask.request.sid)
 
 
 def render_question(user, _session, question_num):
@@ -109,9 +108,9 @@ def render_question_full(_session, question_num):
                                  question_num=question_num)
 
 
-def render_question_admin(_session, question_num):
+def render_question_admin(_session, question_num, is_admin=True):
     return flask.render_template(_session.questions[question_num].template_admin, session=_session,
-                                 question_num=_session.question_num)
+                                 question_num=_session.question_num, is_admin=is_admin)
 
 
 def render_sidebar(user, _session):
@@ -137,13 +136,31 @@ def socket_join(session_name):
 def socket_disconnect():
     app.logger.info('Client {} disconnected'.format(flask.request.sid))
 
+    if flask.request.sid in data.sids_to_user:
+        del data.sids_to_user[flask.request.sid]
+
+    if flask.request.sid in data.sids_to_session:
+        del data.sids_to_session[flask.request.sid]
 
 
 @socketio.on('register')
 def socket_register(username):
-    user = data.users[flask.request.sid]
+    session = data.sids_to_session[flask.request.sid]
 
-    user.username = username
+    if username in data.users:
+        user = data.users[username]
+
+        data.sids_to_user[flask.request.sid] = user
+        user.sid = flask.request.sid
+
+        app.logger.info('Client {} rejoined as {}'.format(flask.request.sid, username))
+    else:
+        user = data.User(sid=flask.request.sid, session=session, username=username)
+
+        data.users[username] = user
+        data.sids_to_user[flask.request.sid] = user
+
+        app.logger.info('Client {} joied as {}'.format(flask.request.sid, username))
 
     flask_socketio.emit('update', render_question(user, user.session, user.session.question_num), room=user.sid)
     flask_socketio.emit('update_left', render_sidebar(user, user.session), room=user.sid)
@@ -151,7 +168,7 @@ def socket_register(username):
 
 @socketio.on('answer')
 def socket_answer(question_num, answer):
-    user = data.users[flask.request.sid]
+    user = data.sids_to_user[flask.request.sid]
 
     if user.session.questions[user.session.question_num].revealed:
         return
@@ -178,12 +195,16 @@ def socket_answer(question_num, answer):
 
 @socketio.on('reveal_answers')
 def socket_reveal_answers(question_num):
-    user = data.admins[flask.request.sid]
+    admin = data.admins[flask.request.sid]
 
-    user.session.questions[question_num].revealed = True
+    admin.session.questions[question_num].revealed = True
 
-    flask_socketio.emit('update', render_question_admin(user.session, user.session.question_num),
+    flask_socketio.emit('update', render_question_admin(admin.session, admin.session.question_num),
                         room=flask.request.sid)
+
+    for _, user in data.iterate_users():
+        if user.session == admin.session:
+            flask_socketio.emit('update', render_question_admin(admin.session, admin.session.question_num, is_admin=False), room=user.sid)
 
 
 def do_goto_question(_session, question_num):
@@ -234,10 +255,14 @@ def show_results():
 
     flask_socketio.emit('update', render_show_results(session, results), room=flask.request.sid)
 
+    for _, user in data.iterate_users():
+        if user.session == admin.session:
+            flask_socketio.emit('update', render_show_results(user.session, results), room=user.sid)
+
 
 @socketio.on('pass_question')
 def socket_pass_question():
-    user = data.admins[flask.request.sid] if flask.request.sid in data.admins else data.users[flask.request.sid]
+    user = data.admins[flask.request.sid] if flask.request.sid in data.admins else data.sids_to_user[flask.request.sid]
 
 
 # Start server
