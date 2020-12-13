@@ -53,6 +53,7 @@ class Question:
         self.prompt = kwargs.get('prompt', None)
         self.image = kwargs.get('image', None)
         self.answers = kwargs.get('answers', [])
+        self.answer = kwargs.get('answer', None)
 
         self.revealed = False
 
@@ -77,6 +78,7 @@ class Question:
         self.prompt = obj.get('prompt', self.prompt)
         self.image = obj.get('image', self.image)
         self.answers = obj.get('answers', self.answers)
+        self.answer = obj.get('answer', self.answer)
 
 
 class LandingQuestion(Question):
