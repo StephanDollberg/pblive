@@ -88,7 +88,7 @@ def debug():
 
 @socketio.on('join')
 def socket_join(session_name):
-    app.logger.debug('New client {} connected'.format(flask.request.sid))
+    app.logger.info('New client {} connected'.format(flask.request.sid))
 
     _session = data.sessions[session_name]
     user = data.User(sid=flask.request.sid, session=_session)
@@ -118,21 +118,21 @@ def render_sidebar(user, _session):
     return flask.render_template('users.html', session=_session, user=user)
 
 
-def relay_color_change(_user, _data):
-    for _, other_user in _data.iterate_users():
-        if other_user != _user and other_user.session == _user.session:
-            flask_socketio.emit('update_left', render_sidebar(other_user, _user.session), room=other_user.sid)
-            if not other_user.colour:
-                flask_socketio.emit('update', flask.render_template('colour_picker.html', session=_user.session),
-                                    room=other_user.sid)
-    for _, _admin in data.iterate_admins():
-        if _admin.session == _user.session:
-            flask_socketio.emit('update_left', render_sidebar(_admin, _user.session), room=_admin.sid)
+# def relay_color_change(_user, _data):
+#     for _, other_user in _data.iterate_users():
+#         if other_user != _user and other_user.session == _user.session:
+#             flask_socketio.emit('update_left', render_sidebar(other_user, _user.session), room=other_user.sid)
+#             if not other_user.colour:
+#                 flask_socketio.emit('update', flask.render_template('colour_picker.html', session=_user.session),
+#                                     room=other_user.sid)
+#     for _, _admin in data.iterate_admins():
+#         if _admin.session == _user.session:
+#             flask_socketio.emit('update_left', render_sidebar(_admin, _user.session), room=_admin.sid)
 
 
 @socketio.on('join_admin')
 def socket_join(session_name):
-    app.logger.debug('New admin {} connected'.format(flask.request.sid))
+    app.logger.info('New admin {} connected'.format(flask.request.sid))
 
     _session = data.sessions[session_name]
     user = data.Admin(sid=flask.request.sid, session=_session)
@@ -147,29 +147,15 @@ def socket_join(session_name):
 
 @socketio.on('disconnect')
 def socket_disconnect():
-    app.logger.debug('Client {} disconnected'.format(flask.request.sid))
+    app.logger.info('Client {} disconnected'.format(flask.request.sid))
 
-    if flask.request.sid in data.users:
-        user = data.users[flask.request.sid]
-
-        data.users_lock.acquire()
-        del data.users[flask.request.sid]
-        data.users_lock.release()
-
-        # Release the colour if it's being held
-        if user.colour:
-            user.session.colours.append(user.colour)
-            relay_color_change(user, data)
 
 
 @socketio.on('register')
-def socket_register(colour_id, colour_name):
+def socket_register(username):
     user = data.users[flask.request.sid]
 
-    if not user.colour and (colour_id, colour_name) in user.session.colours:
-        user.colour = (colour_id, colour_name)
-        user.session.colours.remove(user.colour)
-        relay_color_change(user, data)
+    user.username = username
 
     flask_socketio.emit('update', render_question(user, user.session, user.session.question_num), room=user.sid)
     flask_socketio.emit('update_left', render_sidebar(user, user.session), room=user.sid)
@@ -232,15 +218,15 @@ def do_goto_question(_session, question_num):
 
     _session.question_num = question_num
 
-    # Do work for some questions
-    if isinstance(_session.questions[question_num], data.RandomQuestion):
-        _session.questions[question_num].answerer = random.choice(
-            [other_user for _, other_user in data.users.items() if other_user.session == _session and other_user.colour]
-        )
+    # # Do work for some questions
+    # if isinstance(_session.questions[question_num], data.RandomQuestion):
+    #     _session.questions[question_num].answerer = random.choice(
+    #         [other_user for _, other_user in data.users.items() if other_user.session == _session and other_user.colour]
+    #     )
 
     # Relay change
     for _, other_user in data.iterate_users():
-        if other_user.session == _session and other_user.colour:
+        if other_user.session == _session and other_user.username:
             flask_socketio.emit('update', render_question(other_user, _session, _session.question_num),
                                 room=other_user.sid)
             flask_socketio.emit('update_left', render_sidebar(other_user, _session), room=other_user.sid)
@@ -261,24 +247,24 @@ def socket_goto_question(question_num):
 def socket_pass_question():
     user = data.admins[flask.request.sid] if flask.request.sid in data.admins else data.users[flask.request.sid]
 
-    if isinstance(user.session.questions[user.session.question_num], data.RandomQuestion):
-        # Re-randomise answerer
-        user.session.questions[user.session.question_num].answerer = random.choice(
-            [other_user for _, other_user in data.users.items() if
-             other_user.session == user.session and other_user.colour])
+    # if isinstance(user.session.questions[user.session.question_num], data.RandomQuestion):
+    #     # Re-randomise answerer
+    #     user.session.questions[user.session.question_num].answerer = random.choice(
+    #         [other_user for _, other_user in data.users.items() if
+    #          other_user.session == user.session and other_user.colour])
 
-        # Relay change
-        for _, other_user in data.iterate_users():
-            if other_user.session == user.session and other_user.colour:
-                flask_socketio.emit('update',
-                                    render_question(other_user, other_user.session, other_user.session.question_num),
-                                    room=other_user.sid)
-                flask_socketio.emit('update_left', render_sidebar(other_user, user.session), room=other_user.sid)
-        for _, _admin in data.iterate_admins():
-            if _admin.session == user.session:
-                flask_socketio.emit('update', render_question_admin(_admin.session, _admin.session.question_num),
-                                    room=_admin.sid)
-                flask_socketio.emit('update_left', render_sidebar(_admin, user.session), room=_admin.sid)
+    #     # Relay change
+    #     for _, other_user in data.iterate_users():
+    #         if other_user.session == user.session and other_user.colour:
+    #             flask_socketio.emit('update',
+    #                                 render_question(other_user, other_user.session, other_user.session.question_num),
+    #                                 room=other_user.sid)
+    #             flask_socketio.emit('update_left', render_sidebar(other_user, user.session), room=other_user.sid)
+    #     for _, _admin in data.iterate_admins():
+    #         if _admin.session == user.session:
+    #             flask_socketio.emit('update', render_question_admin(_admin.session, _admin.session.question_num),
+    #                                 room=_admin.sid)
+    #             flask_socketio.emit('update_left', render_sidebar(_admin, user.session), room=_admin.sid)
 
 
 # Start server

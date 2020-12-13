@@ -16,12 +16,22 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #}
 
-<h1 class="ui dividing header">Pick a colour</h1>
+<h1 class="ui dividing header">Pick a username</h1>
 
 <div id="colour_picker_container">
-	<div style="line-height: 38px;">
+<!-- 	<div style="line-height: 38px;">
 		{% for colour in session.colours %}
 			<button class="ui button" style="background-color: {{ colour[1] }}; width: 32px; height: 32px; padding: 0 0;" onclick="socket.emit('register', {{ colour[0] }}, '{{ colour[1] }}');">{{ colour[0] }}</button>
 		{% endfor %}
 	</div>
+ -->    <div class="ui input">
+        <input type="text" id="username" name="username" value="">
+        <button class="ui button" style="width: 32px; height: 32px; padding: 0 0;" onclick="submitRegister()">Go</button>
+    </div>
 </div>
+
+<script>
+        function submitRegister() {
+            socket.emit('register', $('#username').val());
+        };
+</script>

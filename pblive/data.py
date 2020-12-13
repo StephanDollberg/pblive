@@ -172,14 +172,14 @@ class SpeedReviewQuestion(Question):
 
 
 class User:
-    def __init__(self, sid=None, session=None, answers=None, colour=None):
+    def __init__(self, sid=None, session=None, answers=None, colour=None, username=None):
         if answers is None:
             answers = {}
 
         self.sid = sid
         self.session = session
         self.answers = answers
-        self.colour = colour
+        self.username = username
 
 
 class Admin(User):
