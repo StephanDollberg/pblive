@@ -23,9 +23,11 @@ import os.path
 import random
 import socket
 import yaml
+import logging
 
 from pblive import data
 
+logging.getLogger().setLevel(logging.INFO)
 
 eventlet.monkey_patch()
 
