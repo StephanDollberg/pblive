@@ -174,7 +174,7 @@ def socket_answer(question_num, answer):
                 # Only one shot!
                 return
 
-        user.answers[question_num] = answer
+        user.answers[question_num] = answer[0]
 
         if isinstance(user.session.questions[user.session.question_num], data.MCQQuestion):
             flask_socketio.emit('update', render_question(user, user.session, user.session.question_num), room=user.sid)
@@ -241,6 +241,33 @@ def socket_goto_question(question_num):
     user = data.admins[flask.request.sid]
 
     do_goto_question(user.session, question_num)
+
+
+def render_show_results(session, results):
+    return flask.render_template('render_show_results.html', results=results)
+
+
+@socketio.on('show_results')
+def show_results():
+    admin = data.admins[flask.request.sid]
+
+    session = admin.session
+
+    results = []
+
+    for _, user in data.iterate_users():
+        if user.session == session and user.username is not None:
+            results.append({ 'user': user.username, 'count': 0 })
+
+            for index, question in enumerate(session.questions):
+                question_num = index
+                if question_num in user.answers:
+                    if user.answers[question_num] == question.answers[question.answer]:
+                        results[-1]['count'] += 1
+
+    results = sorted(results, key=lambda user: user['count'], reverse=True)
+
+    flask_socketio.emit('update', render_show_results(session, results), room=flask.request.sid)
 
 
 @socketio.on('pass_question')

@@ -20,7 +20,7 @@
 	{% if session.questions[question_num].prompt %}
 		<p><b>{{ session.questions[question_num].prompt }}</b></p>
 	{% endif %}
-	
+
 	{% if session.questions[question_num].image %}
 		<p style="text-align: center;"><img src="{{ url_for('image', location=session.questions[question_num].image) }}" style="width: 100%; max-height: 100%;"></p>
 	{% endif %}
@@ -42,5 +42,8 @@
 	{% endif %}
 	{% if question_num < session.questions|length - 1 %}
 		<button class="ui button" onclick="socket.emit('goto_question', {{ question_num + 1 }});">Next question</button>
+	{% else %}
+		<button class="ui button" onclick="socket.emit('show_results');">Show Results</button>
 	{% endif %}
+
 </p>

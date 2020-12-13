@@ -1,0 +1,8 @@
+
+<h1 class="ui dividing header">Results:</h1>
+
+{% for result in results %}
+	<div class="inline field">
+		{{ result['user'] }} {{ result['count'] }}
+	</div>
+{% endfor %}

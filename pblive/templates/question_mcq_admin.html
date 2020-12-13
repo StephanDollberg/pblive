@@ -22,7 +22,7 @@
 	{% if session.questions[question_num].revealed %}
 		<ul class="ui list">
 			{% for answer in session.questions[question_num].answers %}
-				{% if loop.index == session.questions[question_num].answer %}
+				{% if loop.index0 == session.questions[question_num].answer %}
 				<li style="line-height: 32px;background-color: lightgreen;">
 				{% else %}
 				<li style="line-height: 32px;">
