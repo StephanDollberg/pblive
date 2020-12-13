@@ -31,7 +31,16 @@
 </div>
 
 <script>
-        function submitRegister() {
-            socket.emit('register', $('#username').val());
-        };
+    function submitRegister() {
+        var username = $('#username').val();
+        window.localStorage.setItem("username", username);
+        socket.emit('register', username);
+    };
+
+    var username = window.localStorage.getItem("username");
+
+    if (username !== null)
+    {
+        $('#username').val(username)
+    }
 </script>
